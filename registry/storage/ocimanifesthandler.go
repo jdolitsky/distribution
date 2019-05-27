@@ -14,10 +14,11 @@ import (
 
 //ocischemaManifestHandler is a ManifestHandler that covers ocischema manifests.
 type ocischemaManifestHandler struct {
-	repository   distribution.Repository
-	blobStore    distribution.BlobStore
-	ctx          context.Context
-	manifestURLs manifestURLs
+	repository         distribution.Repository
+	blobStore          distribution.BlobStore
+	ctx                context.Context
+	manifestURLs       manifestURLs
+	manifestMediaTypes manifestMediaTypes
 }
 
 var _ ManifestHandler = &ocischemaManifestHandler{}
@@ -83,37 +84,47 @@ func (ms *ocischemaManifestHandler) verifyManifest(ctx context.Context, mnfst oc
 	for _, descriptor := range mnfst.References() {
 		var err error
 
-		switch descriptor.MediaType {
-		case v1.MediaTypeImageLayer, v1.MediaTypeImageLayerGzip, v1.MediaTypeImageLayerNonDistributable, v1.MediaTypeImageLayerNonDistributableGzip:
-			allow := ms.manifestURLs.allow
-			deny := ms.manifestURLs.deny
-			for _, u := range descriptor.URLs {
-				var pu *url.URL
-				pu, err = url.Parse(u)
-				if err != nil || (pu.Scheme != "http" && pu.Scheme != "https") || pu.Fragment != "" || (allow != nil && !allow.MatchString(u)) || (deny != nil && deny.MatchString(u)) {
-					err = errInvalidURL
-					break
+		// validate mediaType
+		allow := ms.manifestMediaTypes.allow
+		deny := ms.manifestMediaTypes.deny
+		mediaType := descriptor.MediaType
+
+		if (allow != nil && !allow.MatchString(mediaType)) || (deny != nil && deny.MatchString(mediaType)) {
+			err = distribution.ErrManifestMediaTypeNotSupported
+		} else {
+			switch mediaType {
+			case v1.MediaTypeImageLayer, v1.MediaTypeImageLayerGzip, v1.MediaTypeImageLayerNonDistributable, v1.MediaTypeImageLayerNonDistributableGzip:
+				allow := ms.manifestURLs.allow
+				deny := ms.manifestURLs.deny
+				for _, u := range descriptor.URLs {
+					var pu *url.URL
+					pu, err = url.Parse(u)
+					if err != nil || (pu.Scheme != "http" && pu.Scheme != "https") || pu.Fragment != "" || (allow != nil && !allow.MatchString(u)) || (deny != nil && deny.MatchString(u)) {
+						err = errInvalidURL
+						break
+					}
+				}
+				if err == nil && len(descriptor.URLs) == 0 {
+					// If no URLs, require that the blob exists
+					_, err = blobsService.Stat(ctx, descriptor.Digest)
+				}
+
+			case v1.MediaTypeImageManifest:
+				var exists bool
+				exists, err = manifestService.Exists(ctx, descriptor.Digest)
+				if err != nil || !exists {
+					err = distribution.ErrBlobUnknown // just coerce to unknown.
+				}
+
+				fallthrough // double check the blob store.
+			default:
+				// forward all else to blob storage
+				if len(descriptor.URLs) == 0 {
+					_, err = blobsService.Stat(ctx, descriptor.Digest)
 				}
 			}
-			if err == nil && len(descriptor.URLs) == 0 {
-				// If no URLs, require that the blob exists
-				_, err = blobsService.Stat(ctx, descriptor.Digest)
-			}
-
-		case v1.MediaTypeImageManifest:
-			var exists bool
-			exists, err = manifestService.Exists(ctx, descriptor.Digest)
-			if err != nil || !exists {
-				err = distribution.ErrBlobUnknown // just coerce to unknown.
-			}
-
-			fallthrough // double check the blob store.
-		default:
-			// forward all else to blob storage
-			if len(descriptor.URLs) == 0 {
-				_, err = blobsService.Stat(ctx, descriptor.Digest)
-			}
 		}
+
 
 		if err != nil {
 			if err != distribution.ErrBlobUnknown {

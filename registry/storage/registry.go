@@ -24,11 +24,18 @@ type registry struct {
 	schema1SigningKey            libtrust.PrivateKey
 	blobDescriptorServiceFactory distribution.BlobDescriptorServiceFactory
 	manifestURLs                 manifestURLs
+	manifestMediaTypes           manifestMediaTypes
 	driver                       storagedriver.StorageDriver
 }
 
 // manifestURLs holds regular expressions for controlling manifest URL whitelisting
 type manifestURLs struct {
+	allow *regexp.Regexp
+	deny  *regexp.Regexp
+}
+
+// manifestMediaTypes holds regular expressions for controlling manifest mediaType whitelisting
+type manifestMediaTypes struct {
 	allow *regexp.Regexp
 	deny  *regexp.Regexp
 }
@@ -76,6 +83,22 @@ func ManifestURLsAllowRegexp(r *regexp.Regexp) RegistryOption {
 func ManifestURLsDenyRegexp(r *regexp.Regexp) RegistryOption {
 	return func(registry *registry) error {
 		registry.manifestURLs.deny = r
+		return nil
+	}
+}
+
+// ManifestMediaTypesAllowRegexp is a functional option for NewRegistry.
+func ManifestMediaTypesAllowRegexp(r *regexp.Regexp) RegistryOption {
+	return func(registry *registry) error {
+		registry.manifestMediaTypes.allow = r
+		return nil
+	}
+}
+
+// ManifestMediaTypesDenyRegexp is a functional option for NewRegistry.
+func ManifestMediaTypesDenyRegexp(r *regexp.Regexp) RegistryOption {
+	return func(registry *registry) error {
+		registry.manifestMediaTypes.deny = r
 		return nil
 	}
 }
@@ -272,10 +295,11 @@ func (repo *repository) Manifests(ctx context.Context, options ...distribution.M
 		blobStore:      blobStore,
 		schema1Handler: v1Handler,
 		schema2Handler: &schema2ManifestHandler{
-			ctx:          ctx,
-			repository:   repo,
-			blobStore:    blobStore,
-			manifestURLs: repo.registry.manifestURLs,
+			ctx:                ctx,
+			repository:         repo,
+			blobStore:          blobStore,
+			manifestURLs:       repo.registry.manifestURLs,
+			manifestMediaTypes: repo.registry.manifestMediaTypes,
 		},
 		manifestListHandler: &manifestListHandler{
 			ctx:        ctx,
@@ -283,10 +307,11 @@ func (repo *repository) Manifests(ctx context.Context, options ...distribution.M
 			blobStore:  blobStore,
 		},
 		ocischemaHandler: &ocischemaManifestHandler{
-			ctx:          ctx,
-			repository:   repo,
-			blobStore:    blobStore,
-			manifestURLs: repo.registry.manifestURLs,
+			ctx:                ctx,
+			repository:         repo,
+			blobStore:          blobStore,
+			manifestURLs:       repo.registry.manifestURLs,
+			manifestMediaTypes: repo.registry.manifestMediaTypes,
 		},
 	}
 

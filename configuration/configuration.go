@@ -224,6 +224,15 @@ type Configuration struct {
 				// that URLs in pushed manifests must not match.
 				Deny []string `yaml:"deny,omitempty"`
 			} `yaml:"urls,omitempty"`
+			// MediaTypes configures validation for mediaType in pushed manifests.
+			MediaTypes struct {
+				// Allow specifies regular expressions (https://godoc.org/regexp/syntax)
+				// that mediaType in pushed manifests must match.
+				Allow []string `yaml:"allow,omitempty"`
+				// Deny specifies regular expressions (https://godoc.org/regexp/syntax)
+				// that mediaType in pushed manifests must not match.
+				Deny []string `yaml:"deny,omitempty"`
+			} `yaml:"mediaTypes,omitempty"`
 		} `yaml:"manifests,omitempty"`
 	} `yaml:"validation,omitempty"`
 

@@ -226,6 +226,7 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 
 	// configure validation
 	if config.Validation.Enabled {
+		// validation of manifest URLs
 		if len(config.Validation.Manifests.URLs.Allow) == 0 && len(config.Validation.Manifests.URLs.Deny) == 0 {
 			// If Allow and Deny are empty, allow nothing.
 			options = append(options, storage.ManifestURLsAllowRegexp(regexp.MustCompile("^$")))
@@ -253,6 +254,36 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 				}
 				re := regexp.MustCompile(strings.Join(config.Validation.Manifests.URLs.Deny, "|"))
 				options = append(options, storage.ManifestURLsDenyRegexp(re))
+			}
+		}
+		// validation of manifest mediaTypes
+		if len(config.Validation.Manifests.MediaTypes.Allow) == 0 && len(config.Validation.Manifests.MediaTypes.Deny) == 0 {
+			// If Allow and Deny are empty, allow nothing.
+			options = append(options, storage.ManifestMediaTypesAllowRegexp(regexp.MustCompile("^$")))
+		} else {
+			if len(config.Validation.Manifests.MediaTypes.Allow) > 0 {
+				for i, s := range config.Validation.Manifests.MediaTypes.Allow {
+					// Validate via compilation.
+					if _, err := regexp.Compile(s); err != nil {
+						panic(fmt.Sprintf("validation.manifests.mediaTypes.allow: %s", err))
+					}
+					// Wrap with non-capturing group.
+					config.Validation.Manifests.MediaTypes.Allow[i] = fmt.Sprintf("(?:%s)", s)
+				}
+				re := regexp.MustCompile(strings.Join(config.Validation.Manifests.MediaTypes.Allow, "|"))
+				options = append(options, storage.ManifestMediaTypesAllowRegexp(re))
+			}
+			if len(config.Validation.Manifests.MediaTypes.Deny) > 0 {
+				for i, s := range config.Validation.Manifests.MediaTypes.Deny {
+					// Validate via compilation.
+					if _, err := regexp.Compile(s); err != nil {
+						panic(fmt.Sprintf("validation.manifests.mediaTypes.deny: %s", err))
+					}
+					// Wrap with non-capturing group.
+					config.Validation.Manifests.MediaTypes.Deny[i] = fmt.Sprintf("(?:%s)", s)
+				}
+				re := regexp.MustCompile(strings.Join(config.Validation.Manifests.MediaTypes.Deny, "|"))
+				options = append(options, storage.ManifestMediaTypesDenyRegexp(re))
 			}
 		}
 	}

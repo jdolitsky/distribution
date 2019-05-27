@@ -16,6 +16,10 @@ var ErrAccessDenied = errors.New("access denied")
 // returns nil due to the client indicating it has the latest version
 var ErrManifestNotModified = errors.New("manifest not modified")
 
+// ErrManifestMediaTypeNotSupported is returned when a conditional manifest
+// mediaType is disallowed
+var ErrManifestMediaTypeNotSupported = errors.New("manifest mediaType not supported")
+
 // ErrUnsupported is returned when an unimplemented or unsupported action is
 // performed
 var ErrUnsupported = errors.New("operation unsupported")
