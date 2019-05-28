@@ -12,7 +12,7 @@ func validateMediaType(descIndex int, descMediaType string, configMediaTypes man
 		// index 0 is manifest config
 		if (configMediaTypes.allow != nil && !configMediaTypes.allow.MatchString(descMediaType)) ||
 			(configMediaTypes.deny != nil && configMediaTypes.deny.MatchString(descMediaType)) {
-			return distribution.ErrManifestConfigMediaTypeInvalid{
+			return distribution.ErrManifestConfigMediaTypeForbidden{
 				ConfigMediaType: descMediaType,
 			}
 		}
@@ -20,7 +20,7 @@ func validateMediaType(descIndex int, descMediaType string, configMediaTypes man
 		// index > 0 is a layer
 		if (layerMediaTypes.allow != nil && !layerMediaTypes.allow.MatchString(descMediaType)) ||
 			(layerMediaTypes.deny != nil && layerMediaTypes.deny.MatchString(descMediaType)) {
-			return distribution.ErrManifestLayerMediaTypeInvalid{
+			return distribution.ErrManifestLayerMediaTypeForbidden{
 				LayerIndex:     descIndex - 1,
 				LayerMediaType: descMediaType,
 			}
