@@ -16,14 +16,6 @@ var ErrAccessDenied = errors.New("access denied")
 // returns nil due to the client indicating it has the latest version
 var ErrManifestNotModified = errors.New("manifest not modified")
 
-// ErrManifestConfigMediaTypeNotSupported is returned when a conditional manifest
-// config mediaType is disallowed
-var ErrManifestConfigMediaTypeNotSupported = errors.New("manifest config mediaType not supported")
-
-// ErrManifestLayerMediaTypeNotSupported is returned when a conditional manifest
-// layer mediaType is disallowed
-var ErrManifestLayerMediaTypeNotSupported = errors.New("manifest layer mediaType not supported")
-
 // ErrUnsupported is returned when an unimplemented or unsupported action is
 // performed
 var ErrUnsupported = errors.New("operation unsupported")
@@ -124,4 +116,25 @@ type ErrManifestNameInvalid struct {
 
 func (err ErrManifestNameInvalid) Error() string {
 	return fmt.Sprintf("manifest name %q invalid: %v", err.Name, err.Reason)
+}
+
+// ErrManifestConfigMediaTypeInvalid returned when a mediaType on a
+// manifest config is disallowed.
+type ErrManifestConfigMediaTypeInvalid struct {
+	ConfigMediaType string
+}
+
+func (err ErrManifestConfigMediaTypeInvalid) Error() string {
+	return fmt.Sprintf("manifest config mediaType %s invalid", err.ConfigMediaType)
+}
+
+// ErrManifestConfigMediaTypeInvalid returned when a mediaType on a
+// manifest layer is disallowed.
+type ErrManifestLayerMediaTypeInvalid struct {
+	LayerIndex     int
+	LayerMediaType string
+}
+
+func (err ErrManifestLayerMediaTypeInvalid) Error() string {
+	return fmt.Sprintf("manifest layer at index %d mediaType %s invalid", err.LayerIndex, err.LayerMediaType)
 }

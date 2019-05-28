@@ -14,10 +14,8 @@ import (
 )
 
 var (
-	errMissingURL             = errors.New("missing URL on layer")
-	errInvalidURL             = errors.New("invalid URL on layer")
-	errInvalidConfigMediaType = errors.New("invalid mediaType on config")
-	errInvalidLayerMediaType  = errors.New("invalid mediaType on layer")
+	errMissingURL = errors.New("missing URL on layer")
+	errInvalidURL = errors.New("invalid URL on layer")
 )
 
 //schema2ManifestHandler is a ManifestHandler that covers schema2 manifests.
@@ -83,14 +81,6 @@ func (ms *schema2ManifestHandler) verifyManifest(ctx context.Context, mnfst sche
 		return nil
 	}
 
-	// validate mediaType on config
-	allow := ms.manifestConfigMediaTypes.allow
-	deny := ms.manifestConfigMediaTypes.deny
-	mediaType := mnfst.Config.MediaType
-	if (allow != nil && !allow.MatchString(mediaType)) || (deny != nil && deny.MatchString(mediaType)) {
-		return errInvalidConfigMediaType
-	}
-
 	manifestService, err := ms.repository.Manifests(ctx)
 	if err != nil {
 		return err
@@ -99,46 +89,61 @@ func (ms *schema2ManifestHandler) verifyManifest(ctx context.Context, mnfst sche
 	blobsService := ms.repository.Blobs(ctx)
 
 	for i, descriptor := range mnfst.References() {
+
+		// validate the mediaType (of config and layers)
+		mediaType := descriptor.MediaType
+		if i == 0 {
+			// index 0 is manifest config
+			allow := ms.manifestConfigMediaTypes.allow
+			deny := ms.manifestConfigMediaTypes.deny
+			if (allow != nil && !allow.MatchString(mediaType)) || (deny != nil && deny.MatchString(mediaType)) {
+				return distribution.ErrManifestConfigMediaTypeInvalid{
+					ConfigMediaType: mediaType,
+				}
+			}
+		} else {
+			// index > 0 is a layer
+			allow := ms.manifestLayerMediaTypes.allow
+			deny := ms.manifestLayerMediaTypes.deny
+			if (allow != nil && !allow.MatchString(mediaType)) || (deny != nil && deny.MatchString(mediaType)) {
+				return distribution.ErrManifestLayerMediaTypeInvalid{
+					LayerIndex:     i - 1,
+					LayerMediaType: mediaType,
+				}
+			}
+		}
+
 		var err error
 
-		allow := ms.manifestLayerMediaTypes.allow
-		deny := ms.manifestLayerMediaTypes.deny
-		mediaType := descriptor.MediaType
+		switch mediaType {
+		case schema2.MediaTypeForeignLayer:
+			// Clients download this layer from an external URL, so do not check for
+			// its presense.
+			if len(descriptor.URLs) == 0 {
+				err = errMissingURL
+			}
+			allow := ms.manifestURLs.allow
+			deny := ms.manifestURLs.deny
+			for _, u := range descriptor.URLs {
+				var pu *url.URL
+				pu, err = url.Parse(u)
+				if err != nil || (pu.Scheme != "http" && pu.Scheme != "https") || pu.Fragment != "" || (allow != nil && !allow.MatchString(u)) || (deny != nil && deny.MatchString(u)) {
+					err = errInvalidURL
+					break
+				}
+			}
+		case schema2.MediaTypeManifest, schema1.MediaTypeManifest:
+			var exists bool
+			exists, err = manifestService.Exists(ctx, descriptor.Digest)
+			if err != nil || !exists {
+				err = distribution.ErrBlobUnknown // just coerce to unknown.
+			}
 
-		// index 0 of mnfst.References() is the manifest config (not layers)
-		if i > 0 && (allow != nil && !allow.MatchString(mediaType)) || (deny != nil && deny.MatchString(mediaType)) {
-			err = errInvalidLayerMediaType
-		} else {
-			switch mediaType {
-			case schema2.MediaTypeForeignLayer:
-				// Clients download this layer from an external URL, so do not check for
-				// its presense.
-				if len(descriptor.URLs) == 0 {
-					err = errMissingURL
-				}
-				allow := ms.manifestURLs.allow
-				deny := ms.manifestURLs.deny
-				for _, u := range descriptor.URLs {
-					var pu *url.URL
-					pu, err = url.Parse(u)
-					if err != nil || (pu.Scheme != "http" && pu.Scheme != "https") || pu.Fragment != "" || (allow != nil && !allow.MatchString(u)) || (deny != nil && deny.MatchString(u)) {
-						err = errInvalidURL
-						break
-					}
-				}
-			case schema2.MediaTypeManifest, schema1.MediaTypeManifest:
-				var exists bool
-				exists, err = manifestService.Exists(ctx, descriptor.Digest)
-				if err != nil || !exists {
-					err = distribution.ErrBlobUnknown // just coerce to unknown.
-				}
-
-				fallthrough // double check the blob store.
-			default:
-				// forward all else to blob storage
-				if len(descriptor.URLs) == 0 {
-					_, err = blobsService.Stat(ctx, descriptor.Digest)
-				}
+			fallthrough // double check the blob store.
+		default:
+			// forward all else to blob storage
+			if len(descriptor.URLs) == 0 {
+				_, err = blobsService.Stat(ctx, descriptor.Digest)
 			}
 		}
 
