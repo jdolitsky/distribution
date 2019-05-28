@@ -16,7 +16,7 @@ import (
 var (
 	errMissingURL       = errors.New("missing URL on layer")
 	errInvalidURL       = errors.New("invalid URL on layer")
-	errInvalidMediaType = errors.New("invalid mediaType on manifest")
+	errInvalidMediaType = errors.New("invalid mediaType on layer")
 )
 
 //schema2ManifestHandler is a ManifestHandler that covers schema2 manifests.
@@ -25,7 +25,7 @@ type schema2ManifestHandler struct {
 	blobStore          distribution.BlobStore
 	ctx                context.Context
 	manifestURLs       manifestURLs
-	manifestMediaTypes manifestMediaTypes
+	manifestMediaTypes manifestLayerMediaTypes
 }
 
 var _ ManifestHandler = &schema2ManifestHandler{}
@@ -88,14 +88,15 @@ func (ms *schema2ManifestHandler) verifyManifest(ctx context.Context, mnfst sche
 
 	blobsService := ms.repository.Blobs(ctx)
 
-	for _, descriptor := range mnfst.References() {
+	for i, descriptor := range mnfst.References() {
 		var err error
 
 		allow := ms.manifestMediaTypes.allow
 		deny := ms.manifestMediaTypes.deny
 		mediaType := descriptor.MediaType
 
-		if (allow != nil && !allow.MatchString(mediaType)) || (deny != nil && deny.MatchString(mediaType)) {
+		// index 0 of mnfst.References() is the manifest config (not layers)
+		if i > 0 && (allow != nil && !allow.MatchString(mediaType)) || (deny != nil && deny.MatchString(mediaType)) {
 			err = errInvalidMediaType
 		} else {
 			switch mediaType {

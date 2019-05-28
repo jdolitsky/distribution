@@ -14,11 +14,11 @@ import (
 
 //ocischemaManifestHandler is a ManifestHandler that covers ocischema manifests.
 type ocischemaManifestHandler struct {
-	repository         distribution.Repository
-	blobStore          distribution.BlobStore
-	ctx                context.Context
-	manifestURLs       manifestURLs
-	manifestMediaTypes manifestMediaTypes
+	repository              distribution.Repository
+	blobStore               distribution.BlobStore
+	ctx                     context.Context
+	manifestURLs            manifestURLs
+	manifestLayerMediaTypes manifestLayerMediaTypes
 }
 
 var _ ManifestHandler = &ocischemaManifestHandler{}
@@ -81,16 +81,17 @@ func (ms *ocischemaManifestHandler) verifyManifest(ctx context.Context, mnfst oc
 
 	blobsService := ms.repository.Blobs(ctx)
 
-	for _, descriptor := range mnfst.References() {
+	for i, descriptor := range mnfst.References() {
 		var err error
 
 		// validate mediaType
-		allow := ms.manifestMediaTypes.allow
-		deny := ms.manifestMediaTypes.deny
+		allow := ms.manifestLayerMediaTypes.allow
+		deny := ms.manifestLayerMediaTypes.deny
 		mediaType := descriptor.MediaType
 
-		if (allow != nil && !allow.MatchString(mediaType)) || (deny != nil && deny.MatchString(mediaType)) {
-			err = distribution.ErrManifestMediaTypeNotSupported
+		// index 0 of mnfst.References() is the manifest config (not layers)
+		if i > 0 && (allow != nil && !allow.MatchString(mediaType)) || (deny != nil && deny.MatchString(mediaType)) {
+			err = distribution.ErrManifestLayerMediaTypeNotSupported
 		} else {
 			switch mediaType {
 			case v1.MediaTypeImageLayer, v1.MediaTypeImageLayerGzip, v1.MediaTypeImageLayerNonDistributable, v1.MediaTypeImageLayerNonDistributableGzip:

@@ -24,7 +24,7 @@ type registry struct {
 	schema1SigningKey            libtrust.PrivateKey
 	blobDescriptorServiceFactory distribution.BlobDescriptorServiceFactory
 	manifestURLs                 manifestURLs
-	manifestMediaTypes           manifestMediaTypes
+	manifestLayerMediaTypes      manifestLayerMediaTypes
 	driver                       storagedriver.StorageDriver
 }
 
@@ -34,8 +34,8 @@ type manifestURLs struct {
 	deny  *regexp.Regexp
 }
 
-// manifestMediaTypes holds regular expressions for controlling manifest mediaType whitelisting
-type manifestMediaTypes struct {
+// manifestLayerMediaTypes holds regular expressions for controlling manifest layer mediaType whitelisting
+type manifestLayerMediaTypes struct {
 	allow *regexp.Regexp
 	deny  *regexp.Regexp
 }
@@ -87,18 +87,18 @@ func ManifestURLsDenyRegexp(r *regexp.Regexp) RegistryOption {
 	}
 }
 
-// ManifestMediaTypesAllowRegexp is a functional option for NewRegistry.
-func ManifestMediaTypesAllowRegexp(r *regexp.Regexp) RegistryOption {
+// ManifestLayerMediaTypesAllowRegexp is a functional option for NewRegistry.
+func ManifestLayerMediaTypesAllowRegexp(r *regexp.Regexp) RegistryOption {
 	return func(registry *registry) error {
-		registry.manifestMediaTypes.allow = r
+		registry.manifestLayerMediaTypes.allow = r
 		return nil
 	}
 }
 
-// ManifestMediaTypesDenyRegexp is a functional option for NewRegistry.
-func ManifestMediaTypesDenyRegexp(r *regexp.Regexp) RegistryOption {
+// ManifestLayerMediaTypesDenyRegexp is a functional option for NewRegistry.
+func ManifestLayerMediaTypesDenyRegexp(r *regexp.Regexp) RegistryOption {
 	return func(registry *registry) error {
-		registry.manifestMediaTypes.deny = r
+		registry.manifestLayerMediaTypes.deny = r
 		return nil
 	}
 }
@@ -299,7 +299,7 @@ func (repo *repository) Manifests(ctx context.Context, options ...distribution.M
 			repository:         repo,
 			blobStore:          blobStore,
 			manifestURLs:       repo.registry.manifestURLs,
-			manifestMediaTypes: repo.registry.manifestMediaTypes,
+			manifestMediaTypes: repo.registry.manifestLayerMediaTypes,
 		},
 		manifestListHandler: &manifestListHandler{
 			ctx:        ctx,
@@ -307,11 +307,11 @@ func (repo *repository) Manifests(ctx context.Context, options ...distribution.M
 			blobStore:  blobStore,
 		},
 		ocischemaHandler: &ocischemaManifestHandler{
-			ctx:                ctx,
-			repository:         repo,
-			blobStore:          blobStore,
-			manifestURLs:       repo.registry.manifestURLs,
-			manifestMediaTypes: repo.registry.manifestMediaTypes,
+			ctx:                     ctx,
+			repository:              repo,
+			blobStore:               blobStore,
+			manifestURLs:            repo.registry.manifestURLs,
+			manifestLayerMediaTypes: repo.registry.manifestLayerMediaTypes,
 		},
 	}
 

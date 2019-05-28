@@ -256,30 +256,30 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 				options = append(options, storage.ManifestURLsDenyRegexp(re))
 			}
 		}
-		// validation of manifest mediaTypes (allow everything if not set)
-		if len(config.Validation.Manifests.MediaTypes.Allow) > 0 {
-			for i, s := range config.Validation.Manifests.MediaTypes.Allow {
+		// validation of manifest layer mediaTypes (allow all if not set)
+		if len(config.Validation.Manifests.LayerMediaTypes.Allow) > 0 {
+			for i, s := range config.Validation.Manifests.LayerMediaTypes.Allow {
 				// Validate via compilation.
 				if _, err := regexp.Compile(s); err != nil {
 					panic(fmt.Sprintf("validation.manifests.mediaTypes.allow: %s", err))
 				}
 				// Wrap with non-capturing group.
-				config.Validation.Manifests.MediaTypes.Allow[i] = fmt.Sprintf("(?:%s)", s)
+				config.Validation.Manifests.LayerMediaTypes.Allow[i] = fmt.Sprintf("(?:%s)", s)
 			}
-			re := regexp.MustCompile(strings.Join(config.Validation.Manifests.MediaTypes.Allow, "|"))
-			options = append(options, storage.ManifestMediaTypesAllowRegexp(re))
+			re := regexp.MustCompile(strings.Join(config.Validation.Manifests.LayerMediaTypes.Allow, "|"))
+			options = append(options, storage.ManifestLayerMediaTypesAllowRegexp(re))
 		}
-		if len(config.Validation.Manifests.MediaTypes.Deny) > 0 {
-			for i, s := range config.Validation.Manifests.MediaTypes.Deny {
+		if len(config.Validation.Manifests.LayerMediaTypes.Deny) > 0 {
+			for i, s := range config.Validation.Manifests.LayerMediaTypes.Deny {
 				// Validate via compilation.
 				if _, err := regexp.Compile(s); err != nil {
 					panic(fmt.Sprintf("validation.manifests.mediaTypes.deny: %s", err))
 				}
 				// Wrap with non-capturing group.
-				config.Validation.Manifests.MediaTypes.Deny[i] = fmt.Sprintf("(?:%s)", s)
+				config.Validation.Manifests.LayerMediaTypes.Deny[i] = fmt.Sprintf("(?:%s)", s)
 			}
-			re := regexp.MustCompile(strings.Join(config.Validation.Manifests.MediaTypes.Deny, "|"))
-			options = append(options, storage.ManifestMediaTypesDenyRegexp(re))
+			re := regexp.MustCompile(strings.Join(config.Validation.Manifests.LayerMediaTypes.Deny, "|"))
+			options = append(options, storage.ManifestLayerMediaTypesDenyRegexp(re))
 		}
 	}
 
