@@ -94,10 +94,11 @@ func (ms *schema2ManifestHandler) verifyManifest(ctx context.Context, mnfst sche
 		allow := ms.manifestMediaTypes.allow
 		deny := ms.manifestMediaTypes.deny
 		mediaType := descriptor.MediaType
+
 		if (allow != nil && !allow.MatchString(mediaType)) || (deny != nil && deny.MatchString(mediaType)) {
 			err = errInvalidMediaType
 		} else {
-			switch descriptor.MediaType {
+			switch mediaType {
 			case schema2.MediaTypeForeignLayer:
 				// Clients download this layer from an external URL, so do not check for
 				// its presense.
