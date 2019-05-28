@@ -90,32 +90,15 @@ func (ms *schema2ManifestHandler) verifyManifest(ctx context.Context, mnfst sche
 
 	for i, descriptor := range mnfst.References() {
 
-		// validate the mediaType (of config and layers)
-		mediaType := descriptor.MediaType
-		if i == 0 {
-			// index 0 is manifest config
-			allow := ms.manifestConfigMediaTypes.allow
-			deny := ms.manifestConfigMediaTypes.deny
-			if (allow != nil && !allow.MatchString(mediaType)) || (deny != nil && deny.MatchString(mediaType)) {
-				return distribution.ErrManifestConfigMediaTypeInvalid{
-					ConfigMediaType: mediaType,
-				}
-			}
-		} else {
-			// index > 0 is a layer
-			allow := ms.manifestLayerMediaTypes.allow
-			deny := ms.manifestLayerMediaTypes.deny
-			if (allow != nil && !allow.MatchString(mediaType)) || (deny != nil && deny.MatchString(mediaType)) {
-				return distribution.ErrManifestLayerMediaTypeInvalid{
-					LayerIndex:     i - 1,
-					LayerMediaType: mediaType,
-				}
-			}
+		// validate the mediaType
+		invalidMediaTypeError := validateMediaType(i, descriptor.MediaType, ms.manifestConfigMediaTypes, ms.manifestLayerMediaTypes)
+		if invalidMediaTypeError != nil {
+			return invalidMediaTypeError
 		}
 
 		var err error
 
-		switch mediaType {
+		switch descriptor.MediaType {
 		case schema2.MediaTypeForeignLayer:
 			// Clients download this layer from an external URL, so do not check for
 			// its presense.
