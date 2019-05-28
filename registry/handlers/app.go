@@ -227,7 +227,7 @@ func NewApp(ctx context.Context, config *configuration.Configuration) *App {
 	// configure validation
 	if config.Validation.Enabled {
 
-		// validation of manifest URLs (deny nothing if not specified)
+		// validation of manifest URLs (allow nothing if not specified)
 		options = append(options, buildRegexValidationOptions("validation.manifests.urls", false,
 			config.Validation.Manifests.URLs.Allow, config.Validation.Manifests.URLs.Deny,
 			storage.ManifestURLsAllowRegexp, storage.ManifestURLsDenyRegexp)...)
