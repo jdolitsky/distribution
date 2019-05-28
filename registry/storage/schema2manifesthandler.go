@@ -14,18 +14,20 @@ import (
 )
 
 var (
-	errMissingURL       = errors.New("missing URL on layer")
-	errInvalidURL       = errors.New("invalid URL on layer")
-	errInvalidMediaType = errors.New("invalid mediaType on layer")
+	errMissingURL             = errors.New("missing URL on layer")
+	errInvalidURL             = errors.New("invalid URL on layer")
+	errInvalidConfigMediaType = errors.New("invalid mediaType on config")
+	errInvalidLayerMediaType  = errors.New("invalid mediaType on layer")
 )
 
 //schema2ManifestHandler is a ManifestHandler that covers schema2 manifests.
 type schema2ManifestHandler struct {
-	repository         distribution.Repository
-	blobStore          distribution.BlobStore
-	ctx                context.Context
-	manifestURLs       manifestURLs
-	manifestMediaTypes manifestLayerMediaTypes
+	repository               distribution.Repository
+	blobStore                distribution.BlobStore
+	ctx                      context.Context
+	manifestURLs             manifestURLs
+	manifestConfigMediaTypes manifestConfigMediaTypes
+	manifestLayerMediaTypes  manifestLayerMediaTypes
 }
 
 var _ ManifestHandler = &schema2ManifestHandler{}
@@ -81,6 +83,14 @@ func (ms *schema2ManifestHandler) verifyManifest(ctx context.Context, mnfst sche
 		return nil
 	}
 
+	// validate mediaType on config
+	allow := ms.manifestConfigMediaTypes.allow
+	deny := ms.manifestConfigMediaTypes.deny
+	mediaType := mnfst.Config.MediaType
+	if (allow != nil && !allow.MatchString(mediaType)) || (deny != nil && deny.MatchString(mediaType)) {
+		return errInvalidConfigMediaType
+	}
+
 	manifestService, err := ms.repository.Manifests(ctx)
 	if err != nil {
 		return err
@@ -91,13 +101,13 @@ func (ms *schema2ManifestHandler) verifyManifest(ctx context.Context, mnfst sche
 	for i, descriptor := range mnfst.References() {
 		var err error
 
-		allow := ms.manifestMediaTypes.allow
-		deny := ms.manifestMediaTypes.deny
+		allow := ms.manifestLayerMediaTypes.allow
+		deny := ms.manifestLayerMediaTypes.deny
 		mediaType := descriptor.MediaType
 
 		// index 0 of mnfst.References() is the manifest config (not layers)
 		if i > 0 && (allow != nil && !allow.MatchString(mediaType)) || (deny != nil && deny.MatchString(mediaType)) {
-			err = errInvalidMediaType
+			err = errInvalidLayerMediaType
 		} else {
 			switch mediaType {
 			case schema2.MediaTypeForeignLayer:
